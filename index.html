@@ -3,580 +3,100 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
-<title>Star Drop Blocks - Simple Tetris-like</title>
+<title>Star Drop Blocks - Cute BGM & Effects</title>
 <style>
-  /* ====== ベースUI（シンプルで見やすい・スマホ対応） ====== */
   :root{
-    --bg:#fde6f2;         /* ふんわりピンク */
-    --panel:#ffffffdd;    /* 半透明パネル */
-    --ink:#4b2b3f;        /* 文字色（深い紫） */
-    --accent:#ff77b7;     /* 強調 */
-    --accent2:#8ae1ff;    /* 補助アクセント */
+    --bg:#fde6f2; --panel:#ffffffdd; --ink:#4b2b3f; --accent:#ff77b7; --accent2:#8ae1ff;
   }
-  html,body{
-    margin:0; height:100%; background: radial-gradient(circle at 20% 15%, #fff6, transparent 40%),
-                               radial-gradient(circle at 80% 70%, #fff6, transparent 35%),
-                               var(--bg);
-    color:var(--ink); font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Hiragino Kaku Gothic ProN", "Noto Sans JP", sans-serif;
-    touch-action: none; /* モバイルでの画面スクロール誤爆を抑制 */
+  html,body{margin:0;height:100%;background:
+    radial-gradient(circle at 20% 15%, #fff6, transparent 40%),
+    radial-gradient(circle at 80% 70%, #fff6, transparent 35%), var(--bg);
+    color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Hiragino Kaku Gothic ProN","Noto Sans JP",sans-serif;
+    touch-action:none;
   }
-  .wrap{
-    display:flex; flex-direction:column; align-items:center; gap:10px; padding:10px 8px 90px;
-    min-height:100%;
+  .wrap{display:flex;flex-direction:column;align-items:center;gap:10px;padding:10px 8px 90px;min-height:100%;}
+  h1{font-size:1.1rem;margin:10px 0 0;}
+  .hud{display:flex;gap:10px;align-items:center;flex-wrap:wrap;justify-content:center;background:var(--panel);
+    border-radius:16px;padding:6px 10px;box-shadow:0 6px 16px #00000014;}
+  .badge{padding:4px 8px;border-radius:999px;background:#fff;box-shadow:inset 0 1px 0 #ffffffcc;}
+  .board-wrap{position:relative;display:flex;gap:10px;align-items:flex-start;justify-content:center}
+  canvas{background:
+    radial-gradient(circle at 10% 20%, #fff8 0 2px, transparent 3px),
+    radial-gradient(circle at 70% 30%, #fff8 0 2px, transparent 3px),
+    radial-gradient(circle at 30% 80%, #fff8 0 2px, transparent 3px), #fefbff;
+    border-radius:14px;box-shadow:0 10px 24px #0000001a,inset 0 2px 0 #ffffffcc;image-rendering:pixelated;}
+  .side{background:var(--panel);border-radius:16px;padding:8px;width:120px;box-shadow:0 6px 16px #00000014;}
+  .side h3{font-size:.9rem;margin:.2rem 0 .4rem;}
+  .mini{width:100%;aspect-ratio:1/1;background:#fff;border-radius:10px;box-shadow:inset 0 2px 0 #ffffffcc;}
+  .pad{position:fixed;left:0;right:0;bottom:0;backdrop-filter:blur(6px);
+    background:linear-gradient(180deg,#ffffffaa,#ffffffee);padding:8px;display:grid;gap:8px;grid-template-columns:repeat(6,1fr);
+    box-shadow:0 -6px 16px #0000001a;z-index:10;}
+  .btn{-webkit-tap-highlight-color:transparent;user-select:none;touch-action:manipulation;text-align:center;font-weight:700;
+    padding:10px 8px;border-radius:12px;border:0;background:#fff;box-shadow:0 6px 12px #00000014,inset 0 2px 0 #ffffffcc;}
+  .btn:active{transform:translateY(1px)}
+  .btn.accent{background:linear-gradient(180deg,#fff,#ffe7f3);color:#b30066;}
+  .btn.accent2{background:linear-gradient(180deg,#fff,#e6f9ff);color:#005b77;}
+  .overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:#00000033;border-radius:14px;color:#fff;text-align:center;padding:20px;}
+  .card{background:#ffffffee;color:var(--ink);border-radius:16px;padding:16px;max-width:420px;box-shadow:0 10px 24px #00000026;}
+  .card h2{margin:.2rem 0 .6rem;}
+  .muted{opacity:.7;font-size:.9rem;}
+  .flash{pointer-events:none;position:absolute;inset:0;border-radius:14px;background:radial-gradient(circle,#fff8,#fff0 60%);opacity:0;transition:opacity .18s;}
+  .shake{animation:shake .18s linear 1;}
+  @keyframes shake{
+    0%{transform:translate(0,0)}25%{transform:translate(2px,-2px)}
+    50%{transform:translate(-2px,2px)}75%{transform:translate(2px,2px)}100%{transform:translate(0,0)}
   }
-  h1{ font-size:1.1rem; margin:10px 0 0; letter-spacing:.02em; }
-  .hud{
-    display:flex; gap:10px; align-items:center; flex-wrap:wrap; justify-content:center;
-    background:var(--panel); border-radius:16px; padding:6px 10px; box-shadow:0 6px 16px #00000014;
-  }
-  .badge{ padding:4px 8px; border-radius:999px; background:#fff; box-shadow: inset 0 1px 0 #ffffffcc; }
-  .board-wrap{
-    position:relative; display:flex; gap:10px; align-items:flex-start; justify-content:center;
-  }
-  canvas{
-    background:
-      /* ほんのり星柄 */
-      radial-gradient(circle at 10% 20%, #fff8 0 2px, transparent 3px),
-      radial-gradient(circle at 70% 30%, #fff8 0 2px, transparent 3px),
-      radial-gradient(circle at 30% 80%, #fff8 0 2px, transparent 3px),
-      #fefbff;
-    border-radius:14px; box-shadow:0 10px 24px #0000001a, inset 0 2px 0 #ffffffcc;
-    image-rendering: pixelated; /* レトロ感＋にじみ防止 */
-  }
-  .side{
-    background:var(--panel); border-radius:16px; padding:8px; width:120px; box-shadow:0 6px 16px #00000014;
-  }
-  .side h3{ font-size:.9rem; margin:.2rem 0 .4rem; }
-  .mini{
-    width:100%; aspect-ratio:1/1; background:#fff; border-radius:10px; box-shadow: inset 0 2px 0 #ffffffcc;
-  }
-
-  /* モバイル用ボタン群（固定フッター） */
-  .pad{
-    position:fixed; left:0; right:0; bottom:0; backdrop-filter:blur(6px);
-    background:linear-gradient(180deg, #ffffffaa, #ffffffee);
-    padding:8px; display:grid; gap:8px; grid-template-columns:repeat(6,1fr);
-    box-shadow:0 -6px 16px #0000001a; z-index:10;
-  }
-  .btn{
-    -webkit-tap-highlight-color: transparent;
-    user-select:none; touch-action:manipulation; text-align:center; font-weight:700;
-    padding:10px 8px; border-radius:12px; border:0; background:#fff;
-    box-shadow:0 6px 12px #00000014, inset 0 2px 0 #ffffffcc;
-  }
-  .btn:active{ transform:translateY(1px); }
-  .btn.accent{ background:linear-gradient(180deg, #fff, #ffe7f3); color:#b30066; }
-  .btn.accent2{ background:linear-gradient(180deg, #fff, #e6f9ff); color:#005b77; }
-  .overlay{
-    position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
-    background:#00000033; border-radius:14px; color:#fff; text-align:center; padding:20px;
-  }
-  .card{
-    background:#ffffffee; color:var(--ink); border-radius:16px; padding:16px; max-width:420px;
-    box-shadow:0 10px 24px #00000026;
-  }
-  .card h2{ margin:.2rem 0 .6rem; }
-  .muted{ opacity:.7; font-size:.9rem; }
-  .sr{ position:absolute; left:-9999px; width:1px; height:1px; overflow:hidden; }
-
-  @media (min-width: 800px){
-    .wrap{ padding-bottom:30px; }
-    .pad{ display:none; } /* PCではフッターボタンを隠す */
-  }
+  @media (min-width:800px){.wrap{padding-bottom:30px}.pad{display:none}}
 </style>
 </head>
 <body>
-  <div class="wrap">
-    <h1>🌟 Star Drop Blocks</h1>
-    <div class="hud" aria-live="polite">
-      <div class="badge" id="stage">Stage 1</div>
-      <div class="badge" id="target">Target: 10 lines</div>
-      <div class="badge" id="lines">Lines: 0</div>
-      <div class="badge" id="score">Score: 0</div>
-      <div class="badge" id="status">Ready</div>
-    </div>
+<div class="wrap">
+  <h1>🌟 Star Drop Blocks</h1>
+  <div class="hud" aria-live="polite">
+    <div class="badge" id="stage">Stage 1</div>
+    <div class="badge" id="target">Target: 10 lines</div>
+    <div class="badge" id="lines">Lines: 0</div>
+    <div class="badge" id="score">Score: 0</div>
+    <div class="badge" id="status">Ready</div>
+  </div>
 
-    <div class="board-wrap">
+  <div class="board-wrap">
+    <div style="position:relative">
       <canvas id="game" width="300" height="600" aria-label="Game board" role="img"></canvas>
-      <div class="side">
-        <h3>Next</h3>
-        <canvas id="next" class="mini" width="120" height="120"></canvas>
-        <h3>Hold</h3>
-        <canvas id="hold" class="mini" width="120" height="120"></canvas>
-        <button id="btnStart" class="btn accent" style="width:100%; margin-top:8px;">▶︎ Start</button>
-        <button id="btnPause" class="btn" style="width:100%; margin-top:6px;">⏸ Pause</button>
-        <button id="btnRestart" class="btn" style="width:100%; margin-top:6px;">↻ Restart</button>
-        <p class="muted" style="margin:.6rem 0 0;">PC: ←→移動 / ↑,Z,X回転 / ↓加速 / Space落下 / P一時停止 / R再開</p>
-      </div>
+      <div id="flash" class="flash"></div>
+    </div>
+    <div class="side">
+      <h3>Next</h3>
+      <canvas id="next" class="mini" width="120" height="120"></canvas>
+      <h3>Hold</h3>
+      <canvas id="hold" class="mini" width="120" height="120"></canvas>
+      <button id="btnStart" class="btn accent" style="width:100%;margin-top:8px;">▶︎ Start</button>
+      <button id="btnPause" class="btn" style="width:100%;margin-top:6px;">⏸ Pause</button>
+      <button id="btnRestart" class="btn" style="width:100%;margin-top:6px;">↻ Restart</button>
+      <button id="btnMute" class="btn" style="width:100%;margin-top:6px;">🔊 Sound</button>
+      <p class="muted" style="margin:.6rem 0 0;">PC: ←→/↑(Z,X)/↓/Space/P/R・スマホは下のパッド</p>
+    </div>
 
-      <!-- 初期ガイドのオーバーレイ（すぐ遊べる導線） -->
-      <div id="overlay" class="overlay" style="display:flex;">
-        <div class="card">
-          <h2>10ライン消したらクリア！</h2>
-          <p>ブロックを回転・移動して横一列をそろえよう。</p>
-          <ul style="margin:.5rem 0 .2rem;">
-            <li>PC：← → / ↑ Z X / ↓ / Space / P</li>
-            <li>スマホ：画面下のボタンで操作</li>
-          </ul>
-          <p class="muted">いつでも「▶︎ Start」で開始できます。</p>
-          <button class="btn accent" id="overlayStart">▶︎ Start</button>
-        </div>
+    <div id="overlay" class="overlay" style="display:flex;">
+      <div class="card">
+        <h2>10ライン消したらクリア！</h2>
+        <p>StartでBGMが鳴ります（いつでも🔊でミュート可）。</p>
+        <ul style="margin:.5rem 0 .2rem;">
+          <li>PC：← → / ↑ Z X / ↓ / Space / P</li>
+          <li>スマホ：画面下のボタンで操作</li>
+        </ul>
+        <p class="muted">ブロックをそろえて横一列を消そう！</p>
+        <button class="btn accent" id="overlayStart">▶︎ Start</button>
       </div>
     </div>
   </div>
+</div>
 
-  <!-- モバイル操作パッド（長押し連打対応） -->
-  <div class="pad" id="pad">
-    <button class="btn" data-action="left" aria-label="Left">◀︎</button>
-    <button class="btn" data-action="right" aria-label="Right">▶︎</button>
-    <button class="btn accent2" data-action="rotL" aria-label="Rotate Left">⟲</button>
-    <button class="btn accent2" data-action="rotR" aria-label="Rotate Right">⟳</button>
-    <button class="btn" data-action="soft" aria-label="Soft Drop">↓</button>
-    <button class="btn accent" data-action="hard" aria-label="Hard Drop">⤓</button>
-  </div>
-
-<script>
-/* ==========================================================
-   Star Drop Blocks - 単一HTML版
-   実装意図の要約（可読性のため要点のみ）：
-   - 10x20の整数グリッドで当たり判定を簡潔に。
-   - 1フレーム毎の描画は差分ではなく全描画（簡潔・十分軽い）。
-   - ブロックの1マス描画は「色ごとにオフスクリーンにキャッシュ」してパフォーマンス確保。
-   - 入力はKeyboard + Pointer（長押しはsetInterval）。
-   - ゴースト表示、ホールド、ネクスト、レベル/ステージ制、目標ラインでクリア。
-   ========================================================== */
-
-(function(){
-  // ====== 定数・基本状態 ======
-  const COLS = 10, ROWS = 20, CELL = 30; // 300x600
-  const canvas = document.getElementById('game');
-  const ctx = canvas.getContext('2d');
-  const nextCv = document.getElementById('next').getContext('2d');
-  const holdCv = document.getElementById('hold').getContext('2d');
-
-  const elStage = document.getElementById('stage');
-  const elTarget = document.getElementById('target');
-  const elLines = document.getElementById('lines');
-  const elScore = document.getElementById('score');
-  const elStatus = document.getElementById('status');
-
-  const overlay = document.getElementById('overlay');
-  const overlayStart = document.getElementById('overlayStart');
-  const btnStart = document.getElementById('btnStart');
-  const btnPause = document.getElementById('btnPause');
-  const btnRestart = document.getElementById('btnRestart');
-
-  // ステージ構成（クリア条件ライン数と落下ベース速度ms）
-  const STAGES = [
-    { target:10, speed:700 },
-    { target:16, speed:600 },
-    { target:22, speed:520 },
-    { target:28, speed:450 },
-    { target:36, speed:380 },
-  ];
-
-  // テトロミノ定義（回転は行列回転で対応）
-  const SHAPES = {
-    I: [[1,1,1,1]],
-    O: [[1,1],[1,1]],
-    T: [[0,1,0],[1,1,1]],
-    S: [[0,1,1],[1,1,0]],
-    Z: [[1,1,0],[0,1,1]],
-    J: [[1,0,0],[1,1,1]],
-    L: [[0,0,1],[1,1,1]],
-  };
-  // ふんわりパステルカラー
-  const COLORS = {
-    I:'#7adfff', O:'#ffd86b', T:'#ff9de6',
-    S:'#9ff4a3', Z:'#ff9f9f', J:'#8fa8ff', L:'#ffc58f',
-    GHOST:'#00000022' // ゴースト
-  };
-
-  // 乱数バッグ（7種1巡）—— 偏り防止
-  class Bag {
-    constructor(){ this.b=[]; }
-    next(){
-      if(this.b.length===0){
-        this.b = Object.keys(SHAPES);
-        for(let i=this.b.length-1;i>0;i--){
-          const j = Math.random()* (i+1) |0;
-          [this.b[i],this.b[j]]=[this.b[j],this.b[i]];
-        }
-      }
-      return this.b.pop();
-    }
-  }
-
-  // ゲーム状態
-  let grid, cur, nextPiece, holdPiece=null, canHold=true;
-  let score, lines, stageIndex, level, target, fallMs, lastFall=0, paused=false, over=false, started=false;
-
-  // 色→オフスクリーンタイルのキャッシュ（描画負荷軽減）
-  const tileCache = new Map();
-  function getTile(color){
-    if(tileCache.has(color)) return tileCache.get(color);
-    const off = document.createElement('canvas');
-    off.width = CELL; off.height = CELL;
-    const c = off.getContext('2d');
-    // 角丸っぽい立体グラデ
-    const r = 6;
-    c.fillStyle = color;
-    roundRect(c, 1,1, CELL-2, CELL-2, r);
-    c.fill();
-    c.globalAlpha = .12; // 光沢
-    c.fillStyle = '#fff';
-    roundRect(c, 3,3, CELL-6, (CELL-6)/2, r);
-    c.fill();
-    c.globalAlpha = 1;
-    c.strokeStyle = '#00000010';
-    c.stroke();
-    tileCache.set(color, off);
-    return off;
-  }
-  function roundRect(c, x,y,w,h,r){
-    c.beginPath();
-    c.moveTo(x+r,y);
-    c.arcTo(x+w,y,x+w,y+h,r);
-    c.arcTo(x+w,y+h,x,y+h,r);
-    c.arcTo(x,y+h,x,y,r);
-    c.arcTo(x,y,x+w,y,r);
-    c.closePath();
-  }
-
-  // ピースオブジェクト
-  function newPiece(type){
-    const m = SHAPES[type].map(row=>row.slice());
-    return { type, m, x: (COLS/2 |0) - (m[0].length/2 |0), y: -2 };
-  }
-  function rotate(mat, dir){
-    // dir=1:右回転, -1:左回転
-    const h = mat.length, w = mat[0].length;
-    const res = Array.from({length:w}, _=> Array(h).fill(0));
-    for(let y=0;y<h;y++){
-      for(let x=0;x<w;x++){
-        if(dir>0) res[x][h-1-y]=mat[y][x];
-        else      res[w-1-x][y]=mat[y][x];
-      }
-    }
-    return res;
-  }
-
-  // ====== 初期化・リスタート ======
-  function init(){
-    grid = Array.from({length:ROWS}, _=> Array(COLS).fill(''));
-    score=0; lines=0; stageIndex=0; level=0; over=false; paused=false; started=false;
-    setStage(0);
-    const bag = new Bag();
-    nextPiece = newPiece(bag.next());
-    cur = newPiece(bag.next());
-    // 次ピース生成用にバッグを保持
-    init.nextBag = bag;
-    canHold=true;
-    lastFall=0;
-    updateHUD();
-    drawAll(0); // 初期描画
-  }
-  function setStage(i){
-    stageIndex = Math.min(i, STAGES.length-1);
-    target = STAGES[stageIndex].target;
-    fallMs = STAGES[stageIndex].speed;
-    elStage.textContent = `Stage ${stageIndex+1}`;
-    elTarget.textContent = `Target: ${target} lines`;
-  }
-
-  // ====== 入力処理 ======
-  const keys = Object.create(null);
-  window.addEventListener('keydown', e=>{
-    if(e.repeat) return;
-    if(e.key==='ArrowLeft'){ move(-1); }
-    else if(e.key==='ArrowRight'){ move(1); }
-    else if(e.key==='ArrowUp'){ rotateCur(1); }
-    else if(e.key==='z' || e.key==='Z'){ rotateCur(-1); }
-    else if(e.key==='x' || e.key==='X'){ rotateCur(1); }
-    else if(e.key==='ArrowDown'){ softDrop(); }
-    else if(e.code==='Space'){ hardDrop(); }
-    else if(e.key==='c' || e.key==='C'){ holdSwap(); }
-    else if(e.key==='p' || e.key==='P'){ togglePause(); }
-    else if(e.key==='r' || e.key==='R'){ restart(); }
-  }, {passive:true});
-
-  // モバイルボタン（長押し対応）
-  const pad = document.getElementById('pad');
-  const holdTimers = new Map();
-  function pressAction(action){
-    if(action==='left') move(-1);
-    else if(action==='right') move(1);
-    else if(action==='rotL') rotateCur(-1);
-    else if(action==='rotR') rotateCur(1);
-    else if(action==='soft') softDrop();
-    else if(action==='hard') hardDrop();
-  }
-  pad.addEventListener('pointerdown', e=>{
-    const t = e.target.closest('[data-action]'); if(!t) return;
-    e.preventDefault();
-    pressAction(t.dataset.action);
-    // 長押しで連打
-    const id = setInterval(()=>pressAction(t.dataset.action), 110);
-    holdTimers.set(e.pointerId, id);
-    if(navigator.vibrate) navigator.vibrate(10);
-  });
-  pad.addEventListener('pointerup', e=>{
-    const id = holdTimers.get(e.pointerId);
-    if(id){ clearInterval(id); holdTimers.delete(e.pointerId); }
-  });
-  pad.addEventListener('pointercancel', e=>{
-    const id = holdTimers.get(e.pointerId);
-    if(id){ clearInterval(id); holdTimers.delete(e.pointerId); }
-  });
-
-  // サイドボタン
-  btnStart.addEventListener('click', startGame);
-  overlayStart.addEventListener('click', startGame);
-  btnPause.addEventListener('click', togglePause);
-  btnRestart.addEventListener('click', restart);
-
-  function startGame(){
-    if(started) return;
-    started=true; over=false; paused=false;
-    overlay.style.display='none';
-    elStatus.textContent='Playing';
-    requestAnimationFrame(loop);
-  }
-  function togglePause(){
-    if(!started || over) return;
-    paused = !paused;
-    elStatus.textContent = paused ? 'Paused' : 'Playing';
-  }
-  function restart(){
-    init();
-    overlay.style.display='none';
-    startGame();
-  }
-
-  // ====== ゲームロジック ======
-  function collide(m, px, py){
-    for(let y=0;y<m.length;y++){
-      for(let x=0;x<m[0].length;x++){
-        if(!m[y][x]) continue;
-        const gx = px + x, gy = py + y;
-        if(gx<0 || gx>=COLS || gy>=ROWS) return true;
-        if(gy>=0 && grid[gy][gx]) return true;
-      }
-    }
-    return false;
-  }
-  function lockPiece(){
-    const {m,x,y,type} = cur;
-    for(let j=0;j<m.length;j++){
-      for(let i=0;i<m[0].length;i++){
-        if(m[j][i]){
-          const gy = y+j, gx=x+i;
-          if(gy>=0) grid[gy][gx] = COLORS[type];
-          else { // 盤外にロック＝ゲームオーバー
-            gameOver(); return;
-          }
-        }
-      }
-    }
-    // ライン消去
-    let cleared=0;
-    for(let r=ROWS-1;r>=0;r--){
-      if(grid[r].every(v=>v)){
-        grid.splice(r,1);
-        grid.unshift(Array(COLS).fill(''));
-        cleared++; r++;
-      }
-    }
-    if(cleared){
-      lines += cleared;
-      score += [0,100,300,500,800][cleared] * (1+stageIndex*0.2 + level*0.1);
-      if(lines >= target){
-        // ステージクリア
-        stageIndex++;
-        setStage(stageIndex);
-        lines = 0;
-        level++;
-        elStatus.textContent = `Stage ${stageIndex} Clear!`;
-        // 落下速度も少し速める
-        fallMs = Math.max(140, fallMs-60);
-      }
-    }
-    // 次へ
-    if(!init.nextBag) init.nextBag = new Bag();
-    cur = nextPiece;
-    nextPiece = newPiece(init.nextBag.next());
-    canHold=true;
-  }
-  function move(dx){
-    if(!started || paused || over) return;
-    const nx = cur.x + dx;
-    if(!collide(cur.m, nx, cur.y)){ cur.x = nx; }
-  }
-  function rotateCur(dir){
-    if(!started || paused || over) return;
-    const rm = rotate(cur.m, dir);
-    // 簡易SRS: 中央/左右に1マスずらしてみる
-    const kicks = [0, -1, 1, -2, 2];
-    for(const k of kicks){
-      if(!collide(rm, cur.x+k, cur.y)){ cur.m = rm; cur.x += k; return; }
-    }
-  }
-  function softDrop(){
-    if(!started || paused || over) return;
-    if(!collide(cur.m, cur.x, cur.y+1)){ cur.y++; score+=1; }
-    else { lockPiece(); }
-  }
-  function hardDrop(){
-    if(!started || paused || over) return;
-    while(!collide(cur.m, cur.x, cur.y+1)){ cur.y++; score+=2; }
-    lockPiece();
-  }
-  function holdSwap(){
-    if(!started || paused || over || !canHold) return;
-    const t = cur.type;
-    if(holdPiece==null){
-      holdPiece = t;
-      cur = nextPiece;
-      nextPiece = newPiece(init.nextBag.next());
-    }else{
-      const temp = holdPiece;
-      holdPiece = t;
-      cur = newPiece(temp);
-    }
-    cur.x = (COLS/2 |0) - (cur.m[0].length/2 |0);
-    cur.y = -2;
-    canHold=false;
-    drawMini(holdCv, holdPiece);
-  }
-  function gameOver(){
-    over = true; started=false;
-    elStatus.textContent='Game Over';
-    overlay.style.display='flex';
-    overlay.querySelector('h2').textContent = 'Game Over!';
-    overlay.querySelector('p').textContent = '↻ Restart で再挑戦しよう。';
-  }
-
-  // ====== メインループ ======
-  function loop(ts){
-    if(!started) return;
-    if(!paused && !over){
-      if(!lastFall) lastFall = ts;
-      if(ts - lastFall >= fallMs){
-        if(!collide(cur.m, cur.x, cur.y+1)){ cur.y++; }
-        else { lockPiece(); }
-        lastFall = ts;
-      }
-      drawAll(ts);
-      updateHUD();
-    }
-    requestAnimationFrame(loop);
-  }
-
-  // ====== 描画 ======
-  function drawAll(){
-    // キャンバスを盤面にフィット（CSS拡大ぼけ防止）
-    fitCanvas();
-
-    // 盤面
-    ctx.clearRect(0,0,canvas.width,canvas.height);
-    // グリッド描画
-    for(let y=0;y<ROWS;y++){
-      for(let x=0;x<COLS;x++){
-        if(grid[y][x]){
-          ctx.drawImage(getTile(grid[y][x]), x*CELL, y*CELL);
-        }else{
-          // 薄いドット
-          ctx.globalAlpha=.05;
-          ctx.fillStyle='#000';
-          ctx.fillRect(x*CELL+CELL/2-1, y*CELL+CELL/2-1, 2,2);
-          ctx.globalAlpha=1;
-        }
-      }
-    }
-    // ゴースト
-    let gy = cur.y;
-    while(!collide(cur.m, cur.x, gy+1)) gy++;
-    ctx.globalAlpha=0.35;
-    drawMatrix(cur.m, cur.x, gy, COLORS.GHOST, true);
-    ctx.globalAlpha=1;
-    // 現在ピース
-    drawMatrix(cur.m, cur.x, cur.y, COLORS[cur.type]);
-
-    // ネクスト/ホールド
-    drawMini(nextCv, nextPiece.type);
-    drawMini(holdCv, holdPiece);
-  }
-  function drawMatrix(m, px, py, color, ghost=false){
-    for(let y=0;y<m.length;y++){
-      for(let x=0;x<m[0].length;x++){
-        if(!m[y][x]) continue;
-        const dx = (px+x)*CELL, dy=(py+y)*CELL;
-        if(ghost){
-          ctx.fillStyle = color;
-          ctx.fillRect(dx+4, dy+4, CELL-8, CELL-8);
-        }else{
-          ctx.drawImage(getTile(color), dx, dy);
-        }
-      }
-    }
-  }
-  function drawMini(c, type){
-    const cvs = c.canvas;
-    c.clearRect(0,0,cvs.width,cvs.height);
-    if(!type) return;
-    const m = SHAPES[type];
-    // 中央配置
-    const w = m[0].length, h = m.length;
-    const cell = Math.floor(Math.min(cvs.width/(w+1), cvs.height/(h+1)));
-    const ox = (cvs.width - w*cell)/2;
-    const oy = (cvs.height - h*cell)/2;
-    // 簡易タイル
-    c.fillStyle='#f8f8ff';
-    c.fillRect(0,0,cvs.width,cvs.height);
-    for(let y=0;y<h;y++){
-      for(let x=0;x<w;x++){
-        if(!m[y][x]) continue;
-        const off = getMiniTile(COLORS[type], cell);
-        c.drawImage(off, ox+x*cell, oy+y*cell);
-      }
-    }
-  }
-  const miniCache = new Map();
-  function getMiniTile(color, cell){
-    const key = color+'_'+cell;
-    if(miniCache.has(key)) return miniCache.get(key);
-    const off = document.createElement('canvas'); off.width=cell; off.height=cell;
-    const c = off.getContext('2d');
-    c.fillStyle=color; roundRect(c,1,1,cell-2,cell-2, Math.max(2,cell*0.2)); c.fill();
-    c.globalAlpha=.15; c.fillStyle='#fff';
-    roundRect(c,2,2,cell-4,(cell-4)/2, Math.max(2,cell*0.2)); c.fill(); c.globalAlpha=1;
-    miniCache.set(key, off); return off;
-  }
-
-  // HUD更新
-  function updateHUD(){
-    elLines.textContent = `Lines: ${lines}`;
-    elScore.textContent = `Score: ${Math.floor(score)}`;
-  }
-
-  // レイアウト：キャンバスをデバイス幅にフィット
-  function fitCanvas(){
-    const maxBoardWidth = Math.min( (window.innerWidth>800 ? 300 : window.innerWidth*0.9 - 140), 360 );
-    const scale = Math.max(1, Math.floor(maxBoardWidth / (COLS* (CELL/1)) ));
-    canvas.width = COLS*CELL; canvas.height = ROWS*CELL;
-    canvas.style.width = (COLS*CELL* (scale/1))+'px';
-    canvas.style.height = (ROWS*CELL* (scale/1))+'px';
-  }
-  window.addEventListener('resize', fitCanvas, {passive:true});
-  window.addEventListener('orientationchange', fitCanvas, {passive:true});
-
-  // ====== ゲーム開始準備 ======
-  init();
-
-  // 使いやすさ：キャンバスやボタンタップでも開始
-  canvas.addEventListener('pointerdown', ()=>{ if(!started) startGame(); });
-
-})();
-</script>
-</body>
-</html>
+<!-- モバイル操作 -->
+<div class="pad" id="pad">
+  <button class="btn" data-action="left" aria-label="Left">◀︎</button>
+  <button class="btn" data-action="right" aria-label="Right">▶︎</button>
+  <button class="btn accent2" data-action="rotL" aria-label="Rotate Left">⟲</button>
+  <button class="btn accent2" data-action="rotR" aria-label="Rotate Right">⟳</button>
+  <button class="btn" data-action="soft" aria-label="Soft Drop">↓</button>
+  <button class="btn accent" data-action="hard" aria-labe
